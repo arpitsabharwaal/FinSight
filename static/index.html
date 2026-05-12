@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FinSight | Market Intelligence Terminal</title>
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+  <div class="page-bg"></div>
+  <div class="page-noise"></div>
+
+  <main class="app-shell">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-mark">
+          <span class="brand-orbit"></span>
+          <span class="brand-letter">F</span>
+        </div>
+        <div>
+          <p class="eyebrow">Financial Signal Studio</p>
+          <h1>FinSight</h1>
+        </div>
+      </div>
+
+      <section class="sidebar-panel mission-panel">
+        <p class="section-label">Assignment Angle</p>
+        <h2>Designed to feel like a boutique research terminal, not a template dashboard.</h2>
+        <p class="mission-copy">
+          The goal is to combine strong data handling with a premium story-led interface so the project feels memorable in a crowded shortlist.
+        </p>
+      </section>
+
+      <section class="sidebar-panel">
+        <p class="section-label">Company Explorer</p>
+        <div class="search-box">
+          <input id="searchInput" placeholder="Search by symbol or company" />
+        </div>
+        <div id="companyList" class="company-list"></div>
+      </section>
+
+      <section class="sidebar-panel compact-panel">
+        <p class="section-label">Capabilities</p>
+        <div class="capability-list">
+          <span>Daily return</span>
+          <span>52-week range</span>
+          <span>Momentum score</span>
+          <span>Volatility score</span>
+          <span>Stock correlation</span>
+          <span>Mock resilience</span>
+        </div>
+      </section>
+
+      <div class="sidebar-footer">
+        <a class="docs-link" href="/docs" target="_blank" rel="noreferrer">Open API Docs</a>
+      </div>
+    </aside>
+
+    <section class="dashboard">
+      <header class="hero-card">
+        <div class="hero-copy">
+          <p class="eyebrow">Market Intelligence Terminal</p>
+          <h2 id="selectedTitle">Select a company</h2>
+          <p id="selectedMeta" class="hero-meta">
+            Pick a company from the left to load chart intelligence, risk cues, and competitive positioning.
+          </p>
+
+          <div class="hero-controls">
+            <select id="daysSelect">
+              <option value="30">Last 30 days</option>
+              <option value="90">Last 90 days</option>
+              <option value="180">Last 180 days</option>
+            </select>
+            <button id="refreshBtn">Refresh Data</button>
+          </div>
+        </div>
+
+        <div class="hero-aside">
+          <div class="pulse-card">
+            <p class="section-label">Market Pulse</p>
+            <div class="pulse-grid">
+              <div>
+                <span>Breadth</span>
+                <strong id="pulseBreadth">--</strong>
+              </div>
+              <div>
+                <span>Avg Momentum</span>
+                <strong id="pulseMomentum">--</strong>
+              </div>
+              <div>
+                <span>Strongest Trend</span>
+                <strong id="pulseLeader">--</strong>
+              </div>
+              <div>
+                <span>Source Mix</span>
+                <strong id="pulseSource">--</strong>
+              </div>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <section class="spotlight-grid">
+        <article class="metric-card statement-card">
+          <span class="metric-label">Latest Close</span>
+          <strong id="latestClose">--</strong>
+          <p id="closeNarrative" class="metric-footnote">Waiting for market context.</p>
+        </article>
+
+        <article class="metric-card">
+          <span class="metric-label">Session Return</span>
+          <strong id="sessionReturn">--</strong>
+          <p id="sessionNarrative" class="metric-footnote">Latest open-to-close move.</p>
+        </article>
+
+        <article class="metric-card">
+          <span class="metric-label">Range Position</span>
+          <strong id="rangePosition">--</strong>
+          <p id="range52" class="metric-footnote">52-week high and low loading.</p>
+        </article>
+
+        <article class="metric-card">
+          <span class="metric-label">Trend / Risk</span>
+          <strong id="riskTrend">--</strong>
+          <p id="dataSource" class="metric-footnote">Source metadata pending.</p>
+        </article>
+      </section>
+
+      <section class="analysis-grid">
+        <article class="chart-card">
+          <div class="card-head">
+            <div>
+              <p class="section-label">Price Story</p>
+              <h3>Closing Price Performance</h3>
+              <p>Close price, moving average, and period performance across the selected time window.</p>
+            </div>
+            <span id="trendPill" class="signal-pill">--</span>
+          </div>
+          <svg id="priceChart" viewBox="0 0 920 380" preserveAspectRatio="none"></svg>
+        </article>
+
+        <article class="signal-card">
+          <div class="card-head">
+            <div>
+              <p class="section-label">Signal Stack</p>
+              <h3>Confidence Dashboard</h3>
+            </div>
+          </div>
+
+          <div class="signal-score">
+            <span>Composite confidence</span>
+            <strong id="confidenceScore">--</strong>
+          </div>
+
+          <div class="signal-meter">
+            <div class="signal-row">
+              <div class="signal-head">
+                <span>Momentum</span>
+                <strong id="momentumScore">--</strong>
+              </div>
+              <div class="signal-track"><span id="momentumBar"></span></div>
+            </div>
+
+            <div class="signal-row">
+              <div class="signal-head">
+                <span>Volatility</span>
+                <strong id="volatilityScore">--</strong>
+              </div>
+              <div class="signal-track warning-track"><span id="volatilityBar"></span></div>
+            </div>
+
+            <div class="signal-row">
+              <div class="signal-head">
+                <span>Distance to High</span>
+                <strong id="distanceHigh">--</strong>
+              </div>
+              <div class="signal-track neutral-track"><span id="distanceHighBar"></span></div>
+            </div>
+
+            <div class="signal-row">
+              <div class="signal-head">
+                <span>Distance to Low</span>
+                <strong id="distanceLow">--</strong>
+              </div>
+              <div class="signal-track warm-track"><span id="distanceLowBar"></span></div>
+            </div>
+          </div>
+
+          <div class="insight-points">
+            <div class="insight-chip">
+              <span>7D average</span>
+              <strong id="movingAverage">--</strong>
+            </div>
+            <div class="insight-chip">
+              <span>Average close</span>
+              <strong id="averageClose">--</strong>
+            </div>
+          </div>
+        </article>
+      </section>
+
+      <section class="insight-grid">
+        <article class="insight-card">
+          <div class="card-head">
+            <div>
+              <p class="section-label">Narrative Layer</p>
+              <h3>Analyst Insight</h3>
+            </div>
+          </div>
+          <p id="insightText">Select a stock to generate a narrative summary.</p>
+          <div id="thesisTags" class="thesis-tags"></div>
+        </article>
+
+        <article class="compare-card">
+          <div class="card-head">
+            <div>
+              <p class="section-label">Duel Mode</p>
+              <h3>Compare Two Stocks</h3>
+              <p>Performance, co-movement, and winner selection in one compact panel.</p>
+            </div>
+          </div>
+          <div class="compare-inputs">
+            <select id="compareA"></select>
+            <select id="compareB"></select>
+            <button id="compareBtn">Compare</button>
+          </div>
+          <div id="compareResult" class="compare-result">Choose two stocks to compare strategic strength.</div>
+        </article>
+      </section>
+
+      <section class="board-card">
+        <div class="card-head">
+          <div>
+            <p class="section-label">Performance Board</p>
+            <h3>Top Gainers and Losers</h3>
+            <p>Shortlist-style leaderboard to highlight relative movers in the selected range.</p>
+          </div>
+        </div>
+
+        <div class="leaderboard">
+          <div class="leader-column">
+            <h4>Momentum Leaders</h4>
+            <div id="gainersList"></div>
+          </div>
+          <div class="leader-column">
+            <h4>Pressure Zone</h4>
+            <div id="losersList"></div>
+          </div>
+        </div>
+      </section>
+    </section>
+  </main>
+
+  <script src="/static/script.js"></script>
+</body>
+</html>
