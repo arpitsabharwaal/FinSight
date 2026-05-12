@@ -189,6 +189,61 @@ class GainersLosersResponse(BaseModel):
     top_losers: List[LeaderboardEntry]
 
 
+class MarketPulseResponse(BaseModel):
+    as_of: str
+    breadth_ratio: float
+    bullish_count: int
+    bearish_count: int
+    avg_momentum_score: float
+    avg_volatility_score: float
+    strongest_symbol: str
+    strongest_company: str
+    weakest_symbol: str
+    quiet_compounder: str
+    high_conviction_idea: str
+    source_mix: Dict[str, int]
+
+
+class ScannerEntry(BaseModel):
+    symbol: str
+    company_name: str
+    trend_signal: str
+    risk_level: str
+    momentum_score: float
+    volatility_score: float
+    period_return_percent: float
+    distance_from_high_percent: float
+    distance_from_low_percent: float
+    composite_score: float
+    thesis: str
+
+
+class ScannerResponse(BaseModel):
+    as_of: str
+    breakout_candidates: List[ScannerEntry]
+    momentum_leaders: List[ScannerEntry]
+    defensive_compounders: List[ScannerEntry]
+    reversal_watchlist: List[ScannerEntry]
+
+
+class ForecastPoint(BaseModel):
+    day: int
+    projected_close: float
+    bull_case: float
+    bear_case: float
+    projected_return_percent: float
+
+
+class ForecastResponse(BaseModel):
+    symbol: str
+    company_name: Optional[str] = None
+    forecast_horizon_days: int
+    forecast_basis: str
+    confidence_label: str
+    current_close: float
+    points: List[ForecastPoint]
+
+
 class SimpleTTLCache:
     def __init__(self, ttl_seconds: int):
         self.ttl_seconds = ttl_seconds
@@ -494,6 +549,10 @@ def set_cached(key: str, value: Any) -> Any:
     return cache.set(key, value)
 
 
+def clamp(value: float, lower: float, upper: float) -> float:
+    return max(lower, min(upper, value))
+
+
 def get_symbol_history(symbol: str, limit: int = 260) -> pd.DataFrame:
     cache_key = f"history:{symbol}:{limit}"
     cached = cache.get(cache_key)
@@ -516,6 +575,68 @@ def get_symbol_history(symbol: str, limit: int = 260) -> pd.DataFrame:
 
     sorted_frame = frame.sort_values("date").reset_index(drop=True)
     return set_cached(cache_key, sorted_frame).copy()
+
+
+def build_stock_profile(symbol: str, lookback_days: int = 90) -> Dict[str, Any]:
+    cache_key = f"profile:{symbol}:{lookback_days}"
+    cached = cache.get(cache_key)
+    if cached is not None:
+        return cached
+
+    summary = build_summary(symbol)
+    history = get_symbol_history(symbol, limit=min(max(lookback_days, 30), 260))
+    latest = history.iloc[-1]
+    first_close = float(history.iloc[0]["close"])
+    latest_close = float(history.iloc[-1]["close"])
+    period_return = ((latest_close - first_close) / first_close) * 100 if first_close else 0
+    distance_from_high = (
+        ((summary["52_week_high"] - summary["latest_close"]) / summary["52_week_high"]) * 100
+        if summary["52_week_high"]
+        else 0
+    )
+    distance_from_low = (
+        ((summary["latest_close"] - summary["52_week_low"]) / summary["52_week_low"]) * 100
+        if summary["52_week_low"]
+        else 0
+    )
+    latest_session_return = float(latest["daily_return"]) * 100
+    composite_score = clamp(
+        50
+        + float(summary["momentum_score"]) * 4.2
+        + (8 if summary["trend_signal"] == "Bullish" else -4)
+        + period_return * 1.2
+        - float(summary["volatility_score"]) * 5.5,
+        1,
+        99,
+    )
+
+    profile = {
+        "symbol": symbol,
+        "company_name": summary["company_name"] or symbol,
+        "trend_signal": summary["trend_signal"],
+        "risk_level": summary["risk_level"],
+        "momentum_score": round(float(summary["momentum_score"]), 4),
+        "volatility_score": round(float(summary["volatility_score"]), 4),
+        "period_return_percent": round(period_return, 2),
+        "distance_from_high_percent": round(distance_from_high, 2),
+        "distance_from_low_percent": round(distance_from_low, 2),
+        "latest_session_return_percent": round(latest_session_return, 2),
+        "composite_score": round(composite_score, 2),
+        "latest_close": round(summary["latest_close"], 2),
+        "data_source": summary["data_source"],
+        "latest_date": summary["latest_date"],
+    }
+    return set_cached(cache_key, profile)
+
+
+def list_all_stock_profiles(lookback_days: int = 90) -> List[Dict[str, Any]]:
+    cache_key = f"all-profiles:{lookback_days}"
+    cached = cache.get(cache_key)
+    if cached is not None:
+        return cached
+
+    profiles = [build_stock_profile(symbol, lookback_days) for symbol in DEFAULT_COMPANIES]
+    return set_cached(cache_key, profiles)
 
 
 def build_summary(symbol: str) -> Dict[str, Any]:
@@ -864,6 +985,181 @@ def get_gainers_losers(days: int = Query(30, ge=7, le=90)):
         "days": days,
         "top_gainers": rows[:3],
         "top_losers": rows[-3:][::-1],
+    }
+    return set_cached(cache_key, payload)
+
+
+@app.get("/market-pulse", response_model=MarketPulseResponse, tags=["Analytics"])
+def get_market_pulse(days: int = Query(90, ge=30, le=180)):
+    cache_key = f"market-pulse:{days}"
+    cached = cache.get(cache_key)
+    if cached is not None:
+        return cached
+
+    profiles = list_all_stock_profiles(days)
+    bullish_count = sum(1 for profile in profiles if profile["trend_signal"] == "Bullish")
+    bearish_count = len(profiles) - bullish_count
+    avg_momentum = sum(profile["momentum_score"] for profile in profiles) / max(1, len(profiles))
+    avg_volatility = sum(profile["volatility_score"] for profile in profiles) / max(1, len(profiles))
+    strongest = max(profiles, key=lambda profile: profile["composite_score"])
+    weakest = min(profiles, key=lambda profile: profile["composite_score"])
+    quiet_compounder = min(
+        profiles,
+        key=lambda profile: (profile["volatility_score"], -profile["period_return_percent"]),
+    )
+    high_conviction = max(
+        profiles,
+        key=lambda profile: (
+            -profile["distance_from_high_percent"],
+            profile["momentum_score"],
+            profile["period_return_percent"],
+        ),
+    )
+    source_mix: Dict[str, int] = {}
+    for profile in profiles:
+        source_mix[profile["data_source"]] = source_mix.get(profile["data_source"], 0) + 1
+
+    payload = {
+        "as_of": utc_now_iso(),
+        "breadth_ratio": round(bullish_count / max(1, len(profiles)), 4),
+        "bullish_count": bullish_count,
+        "bearish_count": bearish_count,
+        "avg_momentum_score": round(avg_momentum, 4),
+        "avg_volatility_score": round(avg_volatility, 4),
+        "strongest_symbol": strongest["symbol"],
+        "strongest_company": strongest["company_name"],
+        "weakest_symbol": weakest["symbol"],
+        "quiet_compounder": quiet_compounder["symbol"],
+        "high_conviction_idea": high_conviction["symbol"],
+        "source_mix": source_mix,
+    }
+    return set_cached(cache_key, payload)
+
+
+@app.get("/scanner", response_model=ScannerResponse, tags=["Analytics"])
+def run_stock_scanner(days: int = Query(90, ge=30, le=180)):
+    cache_key = f"scanner:{days}"
+    cached = cache.get(cache_key)
+    if cached is not None:
+        return cached
+
+    profiles = list_all_stock_profiles(days)
+
+    def decorate(profile: Dict[str, Any], thesis: str) -> Dict[str, Any]:
+        return {
+            "symbol": profile["symbol"],
+            "company_name": profile["company_name"],
+            "trend_signal": profile["trend_signal"],
+            "risk_level": profile["risk_level"],
+            "momentum_score": profile["momentum_score"],
+            "volatility_score": profile["volatility_score"],
+            "period_return_percent": profile["period_return_percent"],
+            "distance_from_high_percent": profile["distance_from_high_percent"],
+            "distance_from_low_percent": profile["distance_from_low_percent"],
+            "composite_score": profile["composite_score"],
+            "thesis": thesis,
+        }
+
+    breakout_candidates = [
+        decorate(
+            profile,
+            "Bullish structure with positive momentum and price sitting close to the 52-week high.",
+        )
+        for profile in profiles
+        if profile["trend_signal"] == "Bullish"
+        and profile["momentum_score"] > 0
+        and profile["distance_from_high_percent"] <= 12
+    ]
+
+    momentum_leaders = [
+        decorate(
+            profile,
+            "Leading recent price action with strong momentum and supportive medium-term performance.",
+        )
+        for profile in sorted(
+            profiles,
+            key=lambda profile: (profile["momentum_score"], profile["period_return_percent"]),
+            reverse=True,
+        )[:3]
+    ]
+
+    defensive_compounders = [
+        decorate(
+            profile,
+            "Lower-volatility bullish name that could appeal to steadier, compounding-style positioning.",
+        )
+        for profile in sorted(
+            [profile for profile in profiles if profile["trend_signal"] == "Bullish"],
+            key=lambda profile: (profile["volatility_score"], -profile["period_return_percent"]),
+        )[:3]
+    ]
+
+    reversal_watchlist = [
+        decorate(
+            profile,
+            "Compressed near lower range levels, making it a candidate for a reversal watch rather than momentum chasing.",
+        )
+        for profile in sorted(
+            profiles,
+            key=lambda profile: (
+                profile["distance_from_low_percent"],
+                profile["momentum_score"],
+            ),
+        )[:3]
+    ]
+
+    payload = {
+        "as_of": utc_now_iso(),
+        "breakout_candidates": breakout_candidates[:3],
+        "momentum_leaders": momentum_leaders,
+        "defensive_compounders": defensive_compounders,
+        "reversal_watchlist": reversal_watchlist,
+    }
+    return set_cached(cache_key, payload)
+
+
+@app.get("/forecast/{symbol}", response_model=ForecastResponse, tags=["Experimental"])
+def get_forecast(symbol: str, horizon: int = Query(5, ge=3, le=10)):
+    normalized_symbol = normalize_symbol(symbol)
+    cache_key = f"forecast:{normalized_symbol}:{horizon}"
+    cached = cache.get(cache_key)
+    if cached is not None:
+        return cached
+
+    summary = build_summary(normalized_symbol)
+    history = get_symbol_history(normalized_symbol, limit=90)
+    current_close = float(history.iloc[-1]["close"])
+    momentum_drift = float(summary["momentum_score"]) / 1000
+    return_drift = float(summary["average_daily_return"]) * 0.6
+    drift = clamp(momentum_drift + return_drift, -0.02, 0.02)
+    volatility = clamp(float(summary["volatility_score"]) / 100, 0.004, 0.08)
+    confidence_label = "High" if summary["risk_level"] == "Low" else "Balanced" if summary["risk_level"] == "Moderate" else "Speculative"
+
+    points = []
+    for day in range(1, horizon + 1):
+        projected_close = current_close * ((1 + drift) ** day)
+        volatility_band = volatility * np.sqrt(day) * 0.75
+        bull_case = projected_close * (1 + volatility_band)
+        bear_case = projected_close * max(0.4, 1 - volatility_band)
+        projected_return = ((projected_close - current_close) / current_close) * 100 if current_close else 0
+        points.append(
+            {
+                "day": day,
+                "projected_close": round(projected_close, 2),
+                "bull_case": round(bull_case, 2),
+                "bear_case": round(bear_case, 2),
+                "projected_return_percent": round(projected_return, 2),
+            }
+        )
+
+    payload = {
+        "symbol": normalized_symbol,
+        "company_name": summary["company_name"],
+        "forecast_horizon_days": horizon,
+        "forecast_basis": "Momentum-weighted drift with volatility cone based on recent daily return behavior.",
+        "confidence_label": confidence_label,
+        "current_close": round(current_close, 2),
+        "points": points,
     }
     return set_cached(cache_key, payload)
 

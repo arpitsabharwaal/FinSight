@@ -24,10 +24,10 @@
       </div>
 
       <section class="sidebar-panel mission-panel">
-        <p class="section-label">Assignment Angle</p>
-        <h2>Designed to feel like a boutique research terminal, not a template dashboard.</h2>
+        <p class="section-label">Launch Story</p>
+        <h2>A research-first stock intelligence product built to stand out instantly.</h2>
         <p class="mission-copy">
-          The goal is to combine strong data handling with a premium story-led interface so the project feels memorable in a crowded shortlist.
+          FinSight mixes clean API engineering, resilient financial data pipelines, and a distinctive fintech interface with scanner and forecast tools.
         </p>
       </section>
 
@@ -40,13 +40,13 @@
       </section>
 
       <section class="sidebar-panel compact-panel">
-        <p class="section-label">Capabilities</p>
+        <p class="section-label">Creative Features</p>
         <div class="capability-list">
-          <span>Daily return</span>
-          <span>52-week range</span>
-          <span>Momentum score</span>
-          <span>Volatility score</span>
-          <span>Stock correlation</span>
+          <span>Market pulse</span>
+          <span>Stock scanner</span>
+          <span>Forecast cone</span>
+          <span>Signal stack</span>
+          <span>Duel mode</span>
           <span>Mock resilience</span>
         </div>
       </section>
@@ -62,7 +62,7 @@
           <p class="eyebrow">Market Intelligence Terminal</p>
           <h2 id="selectedTitle">Select a company</h2>
           <p id="selectedMeta" class="hero-meta">
-            Pick a company from the left to load chart intelligence, risk cues, and competitive positioning.
+            Pick a company to explore price story, risk cues, scanner logic, and an experimental forecast cone.
           </p>
 
           <div class="hero-controls">
@@ -88,12 +88,12 @@
                 <strong id="pulseMomentum">--</strong>
               </div>
               <div>
-                <span>Strongest Trend</span>
+                <span>High Conviction</span>
                 <strong id="pulseLeader">--</strong>
               </div>
               <div>
-                <span>Source Mix</span>
-                <strong id="pulseSource">--</strong>
+                <span>Quiet Compounder</span>
+                <strong id="pulseCompounder">--</strong>
               </div>
             </div>
           </div>
@@ -196,6 +196,47 @@
               <strong id="averageClose">--</strong>
             </div>
           </div>
+        </article>
+      </section>
+
+      <section class="innovation-grid">
+        <article class="scanner-card">
+          <div class="card-head">
+            <div>
+              <p class="section-label">Creative Tool</p>
+              <h3>Strategy Scanner</h3>
+              <p>Breakout ideas, momentum leaders, defensive compounders, and reversal watchlist.</p>
+            </div>
+          </div>
+          <div class="scanner-tabs">
+            <button class="tab-btn active" data-tab="breakout">Breakout</button>
+            <button class="tab-btn" data-tab="momentum">Momentum</button>
+            <button class="tab-btn" data-tab="defensive">Defensive</button>
+            <button class="tab-btn" data-tab="reversal">Reversal</button>
+          </div>
+          <div id="scannerList" class="scanner-list"></div>
+        </article>
+
+        <article class="forecast-card">
+          <div class="card-head">
+            <div>
+              <p class="section-label">Experimental Tool</p>
+              <h3>Forecast Cone</h3>
+              <p>A scenario-based projection using recent drift and volatility rather than a black-box model.</p>
+            </div>
+          </div>
+          <div class="forecast-header">
+            <div>
+              <span>Confidence</span>
+              <strong id="forecastConfidence">--</strong>
+            </div>
+            <div>
+              <span>Current Close</span>
+              <strong id="forecastCurrent">--</strong>
+            </div>
+          </div>
+          <svg id="forecastChart" viewBox="0 0 520 260" preserveAspectRatio="none"></svg>
+          <p id="forecastBasis" class="forecast-basis">Forecast basis will load here.</p>
         </article>
       </section>
 

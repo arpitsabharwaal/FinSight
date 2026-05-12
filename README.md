@@ -45,7 +45,7 @@ FinSight_Stock_Data_Intelligence_Dashboard/
 +-- .env.example
 |
 +-- data/
-|   +-- stocks.db
+|   +-- stocks.db  # generated locally, not committed
 |
 +-- static/
 |   +-- index.html
@@ -146,6 +146,36 @@ Returns a natural-language summary built from trend, volatility, and 52-week pos
 
 Returns top 3 gainers and top 3 losers across tracked companies.
 
+### `GET /market-pulse?days=90`
+
+Returns a market-wide snapshot across tracked companies, including:
+
+- bullish versus bearish breadth
+- average momentum
+- average volatility
+- strongest symbol
+- quiet compounder
+- high-conviction idea
+- live versus mock source mix
+
+### `GET /scanner?days=90`
+
+Returns curated stock buckets for the dashboard scanner:
+
+- breakout candidates
+- momentum leaders
+- defensive compounders
+- reversal watchlist
+
+Each scanner entry includes a rule-based thesis and composite score.
+
+### `GET /forecast/{symbol}?horizon=5`
+
+Returns an experimental forecast cone for the selected stock.
+
+This is a heuristic forecast built from recent momentum, average return drift, and volatility bands.
+It is not a real AI/ML price prediction and should be presented honestly as an exploratory feature.
+
 ### `POST /refresh`
 
 Refreshes all company data and returns refresh metadata:
@@ -180,6 +210,11 @@ The ingestion pipeline:
 - computes the 7-day moving average
 - computes rolling volatility
 - computes momentum relative to the moving average
+
+## Data Storage Note
+
+`data/stocks.db` is generated locally at runtime and should not be committed to GitHub.
+The repository keeps the `data/` folder structure, but the SQLite database file itself is ignored.
 
 ## Production-Style Improvements
 
@@ -219,6 +254,8 @@ docker run -p 8000:8000 finsight-dashboard
 The app first tries to fetch real stock data using `yfinance`.
 
 If Yahoo Finance is unavailable because of SSL, connectivity, or rate limits, FinSight automatically falls back to deterministic mock data. This keeps the dashboard, APIs, and evaluator experience fully functional.
+
+This means the app remains runnable even when live market data cannot be fetched during evaluator testing.
 
 ## Suggested Submission Checklist
 

@@ -44,6 +44,27 @@ class FinSightApiTests(unittest.TestCase):
         self.assertIn("return_correlation", payload)
         self.assertIn("winner", payload)
 
+    def test_market_pulse_endpoint(self):
+        response = self.client.get("/market-pulse?days=90")
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertIn("breadth_ratio", payload)
+        self.assertIn("high_conviction_idea", payload)
+
+    def test_scanner_endpoint(self):
+        response = self.client.get("/scanner?days=90")
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertIn("momentum_leaders", payload)
+        self.assertTrue(len(payload["momentum_leaders"]) >= 1)
+
+    def test_forecast_endpoint(self):
+        response = self.client.get("/forecast/INFY?horizon=5")
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual(payload["forecast_horizon_days"], 5)
+        self.assertEqual(len(payload["points"]), 5)
+
     def test_refresh_endpoint(self):
         response = self.client.post("/refresh")
         self.assertEqual(response.status_code, 200)
