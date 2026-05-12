@@ -40,7 +40,6 @@ FinSight_Stock_Data_Intelligence_Dashboard/
 +-- main.py
 +-- requirements.txt
 +-- README.md
-+-- INTERVIEW_NOTES.md
 +-- Dockerfile
 +-- .dockerignore
 +-- .env.example
